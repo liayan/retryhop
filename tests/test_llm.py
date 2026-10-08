@@ -221,6 +221,50 @@ def test_circuit_half_open_failure_reopens():
     assert breaker.state == "open"
 
 
+def test_cancelled_trial_frees_half_open_slot():
+    now = [0.0]
+    breaker = CircuitBreaker(failure_threshold=1, recovery_time=5, clock=lambda: now[0])
+    breaker.record_failure()
+    now[0] = 6
+
+    @llm_retry(attempts=1, circuit=breaker)
+    async def call(hang):
+        if hang:
+            await asyncio.sleep(10)
+        return "ok"
+
+    async def main():
+        task = asyncio.ensure_future(call(True))
+        await asyncio.sleep(0)               # let the trial call start
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert breaker.state == "half_open"
+        return await call(False)             # the next caller gets the trial
+
+    assert asyncio.run(main()) == "ok"
+    assert breaker.state == "closed"
+
+
+def test_interrupted_trial_frees_half_open_slot():
+    now = [0.0]
+    breaker = CircuitBreaker(failure_threshold=1, recovery_time=5, clock=lambda: now[0])
+    breaker.record_failure()
+    now[0] = 6
+    interrupts = [KeyboardInterrupt()]
+
+    @llm_retry(attempts=1, circuit=breaker, sleep=no_sleep)
+    def call():
+        if interrupts:
+            raise interrupts.pop()
+        return "ok"
+
+    with pytest.raises(KeyboardInterrupt):
+        call()
+    assert call() == "ok"
+    assert breaker.state == "closed"
+
+
 def test_client_errors_do_not_trip_circuit():
     breaker = CircuitBreaker(failure_threshold=1, recovery_time=5)
 

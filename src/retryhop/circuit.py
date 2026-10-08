@@ -83,5 +83,14 @@ class CircuitBreaker:
                 self._opened_at = self._clock()
                 self._trial_running = False
 
+    def release_trial(self) -> None:
+        """Free the half-open trial slot without recording a result.
+
+        For calls that end with no outcome, such as a cancelled task. Without
+        this the breaker would stay half-open and reject every later call.
+        """
+        with self._lock:
+            self._trial_running = False
+
     def reset(self) -> None:
         self.record_success()

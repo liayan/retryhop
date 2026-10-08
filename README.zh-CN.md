@@ -150,7 +150,7 @@ except CircuitOpenError as e:
 ```
 
 - 连续失败的尝试次数达到 `failure_threshold` 后熔断打开，之后的调用直接抛出 `CircuitOpenError`，不会请求 API。
-- 经过 `recovery_time` 秒后放行一次试探调用。成功则关闭熔断，失败则重新打开。试探期间的其他调用会收到 `CircuitOpenError`。
+- 经过 `recovery_time` 秒后放行一次试探调用。成功则关闭熔断，失败则重新打开。试探期间的其他调用会收到 `CircuitOpenError`。如果试探调用被取消或中断，下一个调用会成为新的试探。
 - 失败按每次尝试计数，不是按每次调用。在默认设置下（6 次尝试，阈值 5），一个持续收到 503 的调用自己就能触发熔断，而且这个调用最终抛出的是 `CircuitOpenError`，不是 SDK 的异常。
 - 400 这类不重试的错误算作成功，因为 API 确实有响应。它会把失败计数清零。
 - `CircuitOpenError` 不会被重试。

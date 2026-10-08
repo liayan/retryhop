@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- Fix: if the half-open trial call of a `CircuitBreaker` was cancelled (for
+  example by an `asyncio.wait_for` timeout) or interrupted, the breaker stayed
+  half-open and rejected every later call with `CircuitOpenError`. The trial
+  slot is now freed and the next call becomes the trial.
+- Add `CircuitBreaker.release_trial()`.
+
 ## 0.1.0
 
 First release.

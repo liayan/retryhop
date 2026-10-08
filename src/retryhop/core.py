@@ -118,6 +118,12 @@ def _run_sync(policy: _Policy, func: Callable[..., T], args: tuple, kwargs: dict
             result = func(*args, **kwargs)
         except policy.exceptions as e:
             exc = e
+        except BaseException:
+            # No outcome to record (e.g. cancelled), but don't hold the
+            # half-open trial slot forever.
+            if policy.circuit is not None:
+                policy.circuit.release_trial()
+            raise
 
         try:
             failed = _evaluate(policy, exc, result)
@@ -154,6 +160,12 @@ async def _run_async(policy: _Policy, func: Callable[..., Awaitable[T]], args: t
             result = await func(*args, **kwargs)
         except policy.exceptions as e:
             exc = e
+        except BaseException:
+            # No outcome to record (e.g. cancelled), but don't hold the
+            # half-open trial slot forever.
+            if policy.circuit is not None:
+                policy.circuit.release_trial()
+            raise
 
         try:
             failed = _evaluate(policy, exc, result)

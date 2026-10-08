@@ -183,7 +183,8 @@ except CircuitOpenError as e:
   Calls then raise `CircuitOpenError` without hitting the API.
 - After `recovery_time` seconds one trial call is let through. Success closes
   the circuit; failure opens it again. Other calls made during the trial get
-  `CircuitOpenError`.
+  `CircuitOpenError`. If the trial call is cancelled or interrupted, the next
+  call becomes the trial.
 - Failures are counted per attempt, not per call. With the defaults
   (6 attempts, threshold 5) a single call that keeps getting 503 opens the
   circuit by itself, and that call ends with `CircuitOpenError` rather than
