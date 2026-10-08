@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "retryhop"
+dynamic = ["version"]
+description = "Retries, rate limiting and circuit breaking for LLM and HTTP API calls (OpenAI, Anthropic, httpx, requests)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Liang Yan", email = "26383278+liayan@users.noreply.github.com" }]
+keywords = ["retry", "backoff", "rate-limit", "circuit-breaker", "llm", "openai", "anthropic", "retry-after", "asyncio"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+sdk-test = ["pytest>=7", "openai", "anthropic", "httpx", "requests"]
+
+[project.urls]
+Homepage = "https://github.com/liayan/retryhop"
+Source = "https://github.com/liayan/retryhop"
+Issues = "https://github.com/liayan/retryhop/issues"
+
+[tool.hatch.version]
+path = "src/retryhop/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/retryhop"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
