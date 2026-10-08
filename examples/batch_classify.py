@@ -1,9 +1,7 @@
-"""Classify many texts concurrently with an LLM, without tripping rate limits.
+"""Classify 50 short texts concurrently with llm_retry, RateLimiter and CircuitBreaker.
 
     pip install retryhop openai
     OPENAI_API_KEY=... MODEL=<model-name> python batch_classify.py
-
-Shows retry + rate limiting + circuit breaking working together on asyncio.
 """
 
 import asyncio
@@ -18,7 +16,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 log = logging.getLogger("batch")
 
 MODEL = os.environ["MODEL"]
-client = AsyncOpenAI(max_retries=0)          # retryhop owns retries
+client = AsyncOpenAI(max_retries=0)          # llm_retry does the retrying
+# Set these to your account's limits.
 limiter = RateLimiter(requests_per_minute=300, tokens_per_minute=100_000)
 breaker = CircuitBreaker(failure_threshold=10, recovery_time=60)
 MAX_OUTPUT = 5

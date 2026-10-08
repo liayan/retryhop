@@ -2,12 +2,16 @@
 
 ## 0.1.0
 
-- `llm_retry`: retry preset for LLM / HTTP APIs that retries only transient
-  errors, honours `Retry-After` / `retry-after-ms`, and re-raises SDK exceptions.
-- `is_transient`, `retry_after_of`, `status_code_of`, `describe` helpers that work
-  with openai, anthropic, httpx, requests and aiohttp exceptions by duck typing.
-- `RateLimiter`: requests-per-minute and tokens-per-minute limits, thread- and
-  asyncio-safe, with `consume()` to correct token estimates.
+First release.
+
+- `llm_retry`: retry decorator for LLM and HTTP API calls. Retries only
+  transient errors, uses `Retry-After` / `retry-after-ms` when present, and
+  re-raises the original exception on give-up.
+- `is_transient`, `retry_after_of`, `status_code_of`, `describe`. Exceptions
+  are matched by attribute and class name. Tested against openai, anthropic,
+  httpx and requests; aiohttp is not tested yet.
+- `RateLimiter`: requests-per-minute and tokens-per-minute buckets, usable
+  from threads and asyncio, with `consume()` to adjust token estimates.
 - `CircuitBreaker` with closed / open / half-open states.
-- General `retry` decorator (sync + async), `retry_call`, `constant` / `linear` /
-  `exponential` backoff, `deadline`, `retry_on`, `retry_if_result`, `wait_hint`.
+- `retry` decorator (sync and async), `retry_call`, and `constant` / `linear` /
+  `exponential` backoff.

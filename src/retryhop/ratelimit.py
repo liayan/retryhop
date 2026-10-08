@@ -1,13 +1,13 @@
-"""Client-side rate limiter for requests-per-minute and tokens-per-minute.
+"""Client-side rate limiter for requests per minute and tokens per minute.
 
-LLM providers limit both how many requests you send and how many tokens they
-process per minute. Staying under those limits on the client side avoids most
-429 errors in the first place, which is cheaper than retrying them.
+LLM providers limit both the number of requests and the number of tokens per
+minute. Throttling before sending cuts down on 429 responses.
 
-The limiter uses two token buckets with *reservations*: each caller takes its
-share immediately (the bucket may go negative) and then sleeps until that
-share has been refilled. This keeps callers in arrival order and works the
-same from threads and from asyncio tasks.
+Each limit is a token bucket that refills continuously and starts full. A
+caller reserves its share right away (the bucket may go negative) and then
+sleeps until the deficit has been refilled, so callers wake in the order they
+reserved. Threads and asyncio tasks use the same code path. State is per
+process.
 """
 
 from __future__ import annotations

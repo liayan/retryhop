@@ -1,7 +1,7 @@
-"""A small thread-safe circuit breaker.
+"""Thread-safe circuit breaker.
 
 States:
-    closed     normal operation; failures are counted
+    closed     normal operation; consecutive failures are counted
     open       calls are rejected at once with CircuitOpenError
     half_open  after ``recovery_time`` one trial call is let through;
                success closes the circuit, failure opens it again

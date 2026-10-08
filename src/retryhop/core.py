@@ -96,8 +96,8 @@ def _plan_wait(policy: _Policy, attempt: int, start: float,
         if remaining <= 0:
             return None
         if delay > remaining:
-            # The server asked us to wait longer than our budget allows:
-            # waiting would be pointless, so give up now.
+            # The server-requested wait does not fit in the remaining budget.
+            # Give up now instead of sleeping and then failing anyway.
             if from_server:
                 return None
             delay = remaining
@@ -205,9 +205,11 @@ def retry(
         wait_hint: ``f(exception, result) -> seconds | None``; when it returns a number
             (e.g. a server's ``Retry-After``) that wait is used instead of ``backoff``.
         on_retry: callback receiving a :class:`RetryState` before each wait.
-        deadline: total time budget in seconds across all attempts.
+        deadline: total time budget in seconds across all attempts. Checked
+            between attempts; a running call is not interrupted.
         reraise: when giving up, re-raise the last exception instead of ``RetryError``.
-        circuit: a shared :class:`CircuitBreaker`; when open, calls fail fast.
+        circuit: a shared :class:`CircuitBreaker`; when open, calls raise
+            ``CircuitOpenError`` without running ``func``.
         sleep: custom sleep function (useful in tests); async for async functions.
     """
     if attempts < 1:

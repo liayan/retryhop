@@ -1,8 +1,9 @@
-"""Retry helpers tuned for LLM / HTTP APIs.
+"""Retry helpers for LLM and HTTP API calls.
 
-Works with exceptions from the ``openai`` and ``anthropic`` SDKs, ``httpx``,
-``requests`` and ``aiohttp`` without importing any of them: errors are
-recognised by duck typing (``status_code``, ``response.headers``, class names).
+Exceptions from ``openai``, ``anthropic``, ``httpx``, ``requests`` and
+``aiohttp`` are recognized by attribute (``status_code``, ``status``,
+``response.headers``) and by class name, so none of those packages is
+imported here. aiohttp is not covered by tests.
 """
 
 from __future__ import annotations
@@ -16,9 +17,9 @@ from .backoff import Backoff, exponential
 from .circuit import CircuitBreaker
 from .core import RetryState, retry
 
-#: HTTP status codes worth retrying.
-#: 408 request timeout, 409 conflict/lock timeout, 429 rate limited,
-#: 5xx server errors, 529 Anthropic "overloaded".
+#: HTTP status codes that are retried.
+#: 408 request timeout, 409 (the openai/anthropic SDKs retry it as a lock
+#: timeout), 429 rate limited, 500/502/503/504, 529 Anthropic "overloaded".
 RETRYABLE_STATUS = frozenset({408, 409, 429, 500, 502, 503, 504, 529})
 
 # Network-level failures, matched by class name anywhere in the MRO so that no
@@ -75,7 +76,8 @@ def headers_of(exc: BaseException) -> Any:
 def retry_after_of(exc: BaseException) -> Optional[float]:
     """Seconds the server asked us to wait, from ``retry-after-ms`` or ``Retry-After``.
 
-    ``Retry-After`` may be a number of seconds or an HTTP date.
+    ``Retry-After`` may be a number of seconds or an HTTP date. Returns None if
+    neither header is present or parseable.
     """
     headers = headers_of(exc)
     raw_ms = _get_header(headers, "retry-after-ms")
@@ -101,12 +103,12 @@ def retry_after_of(exc: BaseException) -> Optional[float]:
 
 
 def is_transient(exc: BaseException) -> bool:
-    """True if ``exc`` looks like a temporary failure worth retrying.
+    """True if ``exc`` looks like a temporary failure that should be retried.
 
     Order of checks:
       1. the server's ``x-should-retry`` header, if present
-      2. the HTTP status code (429, 5xx, ... retry; 400/401/403/404/422 do not)
-      3. network errors and timeouts (by type or class name)
+      2. the HTTP status code: retried if in ``RETRYABLE_STATUS``, otherwise not
+      3. with no status code: network errors and timeouts (by type or class name)
     """
     should = _get_header(headers_of(exc), "x-should-retry")
     if should is not None:
@@ -123,7 +125,7 @@ def is_transient(exc: BaseException) -> bool:
 
 
 def describe(state: RetryState) -> str:
-    """One-line human-readable description of a retry, handy for logging."""
+    """Format a ``RetryState`` as a one-line log message."""
     exc = state.exception
     if exc is None:
         what = f"rejected result {state.result!r}"
@@ -147,19 +149,20 @@ def llm_retry(
     reraise: bool = True,
     sleep: Optional[Callable[[float], Any]] = None,
 ) -> Any:
-    """``retry`` preset for LLM and HTTP API calls (sync or async).
+    """``retry`` with defaults for LLM and HTTP API calls (sync or async).
 
-    * retries only transient errors (:func:`is_transient`); 400/401/403/404
-      and other client errors are raised at once
-    * honours the server's ``Retry-After`` / ``retry-after-ms`` (plus a little
-      jitter), capped at ``max_retry_after`` seconds; if the server asks for a
-      longer wait than ``deadline`` allows, it gives up instead of sleeping
-    * otherwise uses exponential backoff with jitter (1s, 2s, 4s ... up to 60s)
-    * by default re-raises the SDK's own exception when giving up, so your
-      existing ``except openai.RateLimitError`` blocks keep working
+    * retries only errors where :func:`is_transient` is true; 400, 401 and
+      other client errors are raised immediately
+    * uses the server's ``retry-after-ms`` / ``Retry-After`` when present, plus
+      up to 0.25 s of jitter, capped at ``max_retry_after`` seconds; if that
+      wait does not fit in the remaining ``deadline``, gives up without sleeping
+    * otherwise uses exponential backoff with full jitter (upper bound 1 s,
+      2 s, 4 s, ... capped at 60 s)
+    * on give-up, re-raises the last exception (``reraise=True``), so handlers
+      such as ``except openai.RateLimitError`` still apply
 
-    Tip: the official SDKs also retry internally (2 times by default). Create
-    the client with ``max_retries=0`` so retries are not multiplied.
+    The openai and anthropic clients retry twice by default. Create them with
+    ``max_retries=0`` so the retries do not multiply.
     """
 
     def hint(exc: Optional[BaseException], result: Any) -> Optional[float]:
